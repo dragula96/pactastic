@@ -18,13 +18,14 @@
 #include "bitmaps.h" //load bitmaps
 #include "bgm.h" //load music
 
+
 // Make an instance of arduboy used for many functions
 Arduboy2 arduboy;
 ArduboyPlaytune tunes(arduboy.audio.enabled);
 Sprites sprites;
 // Variables for your game go here.
-byte playerX;
-byte playerY;
+int playerX;
+int playerY;
 byte score;
 byte highScore;
 byte soundOptions;
@@ -153,9 +154,9 @@ Target target;
 // use it for anything that needs to be set only once in your game.
 
 void setup() {
+  // Serial.begin(9600);
   //initiate arduboy instance
   arduboy.begin();
-  Serial.begin(9600);
   // here we set the framerate
   arduboy.setFrameRate(30);
   soundOptions = 2; //0 = mute, 1 = SFX only, 2 = both music and sound effects.
@@ -190,20 +191,18 @@ void loop() {
       arduboy.clear();
       //DRAW IMAGE
       arduboy.drawBitmap(0, 0, dmgLogoImg, 128, 64, WHITE);
-      Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
       arduboy.display();
       delay(2000);
 
       gameState = TITLE_SCREEN;
       break;
     case TITLE_SCREEN:
-
+      tunes.playScore(titleBGM);
       //ANIMATE TITLE WORDS
       for (byte i = 64; i > 10; i--) {
         arduboy.clear();
         //DRAW IMAGE
         arduboy.drawBitmap(0, i, titleImg, 128, 16);
-        Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
         arduboy.display();
         delay(30);
       }
@@ -211,6 +210,9 @@ void loop() {
       boolean exitTitle;
       exitTitle = false;
       while (!exitTitle) {
+        if (!tunes.playing()) {
+          tunes.playScore(titleBGM);
+        }
         arduboy.clear();
 
         arduboy.drawBitmap(0, 10, titleImg, 128, 16, WHITE);
@@ -229,7 +231,6 @@ void loop() {
         if (delayPressA < 128) {
           arduboy.drawBitmap(WIDTH / 2 - 32, HEIGHT / 2 + 10, pressAImg, 64, 8, WHITE);
         }
-        Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
         arduboy.display();
 
         // if the  B button is pressed TUGGLE SOUND
@@ -278,7 +279,6 @@ void loop() {
       arduboy.setCursor(WIDTH / 2 - 23, HEIGHT / 2 + 23 );
       arduboy.print("SCORE:");
       arduboy.print(score);
-      Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
       arduboy.display();
       delay(3000);
       gameState = TITLE_SCREEN;
@@ -291,7 +291,6 @@ void loop() {
 
       arduboy.setCursor(WIDTH / 2 - 23, HEIGHT / 2 - 3);
       arduboy.print("PAUSED!");
-      Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
       arduboy.display();
 
       if (arduboy.justPressed(B_BUTTON)) {
@@ -318,7 +317,6 @@ void loop() {
           arduboy.print("Ready!");
           sprites.drawPlusMask(x1, playerY, pacRight_plus_mask, playerFrame);
           sprites.drawPlusMask(x2, playerY, pacRight_plus_mask, playerFrame);
-          Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
           arduboy.display();
           delay(2);
         }
@@ -355,9 +353,10 @@ void loop() {
 
 
 
-      Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
+
       // then we finaly we tell the arduboy to display what we just wrote to the display.
       arduboy.display();
+      //Serial.write(arduboy.getBuffer(), 128 * 64 / 8);
 
 
 
@@ -368,7 +367,7 @@ void loop() {
 
 void checkButtons() {
   // the next couple of lines will deal with checking if the D-pad buttons
-  // are pressed and move our text accordingly.
+  // are pressed and move our player accordingly.
   // We check to make sure that x and y stay within a range that keeps the
   // text on the screen.
 
@@ -384,12 +383,16 @@ void checkButtons() {
 
   // if the up button is pressed
   if (arduboy.pressed(UP_BUTTON)) {
-    currentDirection = UP;
+    //check if player is within the screen and not in warp zone
+    if ((playerX > 3) && (playerX < WIDTH - 11))
+      currentDirection = UP;
   }
 
   // if the down button  is pressed
   if (arduboy.pressed(DOWN_BUTTON)) {
-    currentDirection = DOWN;
+    //check if player is within the screen and not in warp zone
+    if ((playerX > 3) && (playerX < WIDTH - 11))
+      currentDirection = DOWN;
   }
 
   // if the B button is pressed pause
@@ -412,6 +415,7 @@ void checkIfScored() {
   if (arduboy.collide(targetPoint, playerRect)) {
     setTarget();
     score ++;
+
     //CHECK IF ENEMY SPAWNS DIRECTLY ON PLAYER, IF SO THEN
     //RE RANDOMIZE ENEMY TO GIVE PLAYER A FAIR CHANCE
     Rect playerRect = {.x = playerX, .y = playerY, .width = PLAYER_SIZE, .height = PLAYER_SIZE};
@@ -421,8 +425,8 @@ void checkIfScored() {
       enemy[score - 1].init();
     }
 
-
-    tunes.tone(1397, 300);
+    tunes.playScore(eat);
+    //tunes.tone(1397, 300);
     if (score > highScore) {
       highScore = score;
     }
@@ -449,7 +453,26 @@ void updateEnemies() {
           tunes.stopScore();
 
         //PAUSE FOR VISUAL
+        int delayT = 500;
         delay(1000);
+        // play death tune
+        tunes.playScore(die);
+        arduboy.clear();
+        sprites.drawPlusMask(playerX, playerY, death_plus_mask, 0);
+        arduboy.display(); // Display the contents of the screen buffer
+        delay(delayT);
+        arduboy.clear();
+        sprites.drawPlusMask(playerX, playerY, death_plus_mask, 1);
+        arduboy.display(); // Display the contents of the screen buffer
+        delay(delayT);
+        arduboy.clear();
+        sprites.drawPlusMask(playerX, playerY, death_plus_mask, 2);
+        arduboy.display(); // Display the contents of the screen buffer
+        delay(delayT);
+        arduboy.clear();
+        sprites.drawPlusMask(playerX, playerY, death_plus_mask, 3);
+        arduboy.display(); // Display the contents of the screen buffer
+        delay(2000);
         gameState = GAME_OVER;
 
       }
@@ -460,12 +483,18 @@ void updateEnemies() {
 void updatePlayer() {
   switch (currentDirection) {
     case RIGHT:
-      if (playerX < WIDTH - PLAYER_SIZE - 6)
+      if ((playerX < WIDTH - PLAYER_SIZE - 6) || (playerY > 24 & playerY < 31 )) {
         playerX += PLAYER_SPEED;
+        if (playerX > WIDTH + 8)
+          playerX = -8;
+      }
       break;
     case LEFT:
-      if (playerX > 4)
+      if ((playerX > 4) || (playerY > 24 & playerY < 31 )) {
         playerX -= PLAYER_SPEED;
+        if (playerX < -8)
+          playerX = WIDTH + 8;
+      }
       break;
     case UP:
       if (playerY > 4)
