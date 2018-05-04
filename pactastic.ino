@@ -1,6 +1,6 @@
 /*
   Pac-tastic
-  version: 1.00
+  version: 1.1
   March  10, 2017
   Copyright (C) 2017 David Martinez
   All rights reserved.
